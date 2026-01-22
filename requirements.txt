@@ -1,0 +1,21 @@
+# Core
+torch
+transformers>=4.40.0
+tqdm
+numpy
+pillow
+pyyaml
+
+# Scoring / QE
+bert-score
+unbabel-comet
+
+# Analysis (optional but used by paper scripts)
+pandas
+matplotlib
+sacrebleu
+scipy
+openpyxl
+
+# Training / LoRA experiments (optional)
+peft
