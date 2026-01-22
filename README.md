@@ -1,141 +1,129 @@
-SilkRoad-MMT: Bridging the Low-Resource Gap in Multimodal Machine Translation
+# Anonymous Reproducibility Package — Dataset Construction Code
 
-📖 Introduction
+This repository contains the full pipeline used in our paper to **construct and filter a multilingual multimodal dataset**
+from images and automatically generated captions.
 
-SilkRoad-MMT is a comprehensive pipeline and dataset designed to address the critical data scarcity in Multimodal Machine Translation (MMT) for low-resource languages in Central and South Asia. This project focuses on six under-represented languages: Uyghur, Kazakh, Uzbek, Kyrgyz, Tajik, and Urdu.
+**Design goals**
+- **End-to-end reproducibility**: deterministic stages, clear inputs/outputs, and fixed thresholds.
+- **Anonymity-friendly**: no hard-coded personal paths, no author identifiers, no git history required.
+- **Top-conference style release**: standard layout, documented CLI, and reproducibility checklist.
 
-We propose a fully automated, high-quality dataset construction framework that integrates:
+---
 
-Metric-Driven Visual Captioning: Utilizing Qwen3-VL to generate high-fidelity English captions, filtered by SigLIP for visual grounding.
+## Repository layout
 
-Hybrid Ensemble Translation: A novel ensemble strategy combining NLLB-200, SeamlessM4T, MADLAD-400, and Qwen-LLM to balance lexical precision and linguistic fluency.
+```
+pipelines/              # Main end-to-end dataset construction pipeline (stages 00–11)
+experiments/            # Ablations/analysis scripts used in the paper (optional)
+configs/                # Default configs & paper thresholds
+scripts/                # One-command runners
+data/
+  images/               # Place images here (not tracked)
+  metadata/             # Place metadata/label files here (not tracked)
+models/                 # Optional local model checkpoints (not tracked)
+outputs/                # All pipeline outputs (not tracked)
+logs/                   # Logs (not tracked)
+```
 
-Tri-QE Filtering Protocol: A rigorous triangular quality estimation mechanism evaluating candidates via COMET-Kiwi (Quality), BERTScore (Consistency), and CLIP (Visual Dependency).
+---
 
-This repository contains all the scripts required to reproduce the dataset construction pipeline, from image feature extraction to final quality scoring.
+## Quickstart
 
-🛠️ Prerequisites
+### 0) Environment
+We recommend Python 3.10+.
 
-The pipeline is optimized for high-performance computing environments (e.g., NVIDIA H100 clusters) and supports fully offline execution.
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -U pip
+pip install -r requirements.txt
+```
 
-Core Dependencies
+> If you run in an offline cluster: pre-download required checkpoints and set `HF_HOME` / `TRANSFORMERS_OFFLINE=1`.
 
-pip install torch torchvision torchaudio
-pip install transformers peft bitsandbytes accelerate
-pip install unbabel-comet bert-score sacrebleu
-pip install pillow tqdm pandas openpyxl
+### 1) Prepare inputs
 
+#### Images
+Put images under:
+- `data/images/` (single directory), **or**
+- `data/images/ILSVRC2012_img_val/` if you use ImageNet val naming.
 
-Environment Variables (For Offline Mode)
+#### Metadata (if using ImageNet-50K)
+Place the following under `data/metadata/`:
+- `imagenet_2012_validation_synset_labels.txt`
+- `imagenet_class_index.json`
 
-If you are running this in an air-gapped environment, please set the following environment variables to prevent Hugging Face libraries from attempting to connect to the internet:
+### 2) Run the full pipeline
 
-export TRANSFORMERS_OFFLINE=1
-export HF_DATASETS_OFFLINE=1
-export TOKENIZERS_PARALLELISM=false
+```bash
+bash scripts/run_full_pipeline.sh \
+  --langs "bn,hi,ha,ma,ur,uz,kk" \
+  --gpu 0
+```
 
+All artifacts will be written under `outputs/` (see "Outputs" below).
 
-📂 Directory Structure
+---
 
-SilkRoad-MMT-Pipeline/
-├── scripts/
-│   ├── 00_extract_image_features.py   # Pre-extract image features using SigLIP
-│   ├── 01_build_manifest_json.py      # Build initial image metadata index
-│   ├── 02_generate_and_rank.py        # Generate captions via Qwen3-VL & Rank via SigLIP
-│   ├── 03_analyze_caption.py          # Statistical analysis of generated captions
-│   ├── 04_filter_dataset.py           # Initial filtering based on thresholds
-│   ├── 05_json_convert.py             # JSON format validation and repair
-│   ├── 06_translate_all_lang_4model.py # Core: Hybrid Ensemble Translation
-│   ├── 07_b_back_translate.py         # Back-translation (Target -> English)
-│   ├── 08_quality_estimation.py       # Tri-QE Scoring (COMET + BERT + CLIP)
-│   ├── 09_filter_uzbek_cyrillic.py    # Language-specific cleaning (Script correction)
-│   └── 11_split_languages.py          # Split final dataset by language and length
-├── data/              # Intermediate JSON files (Not included in repo)
-├── models/            # Local model checkpoints (Not included in repo)
-└── README.md
+## Outputs
 
+Typical outputs (paths may vary if you override env vars):
 
-🚀 Usage Pipeline
+- `outputs/features/siglip_features.pt` — image features
+- `outputs/manifest/manifest.json` — image manifest with class/name info
+- `outputs/captions/generated_ranked.jsonl` — generated caption candidates + ranking
+- `outputs/captions/filtered.json` — filtered captions by thresholds
+- `outputs/translations/translations.json` — multilingual translations (4 models)
+- `outputs/scored/scored.json` — QE + text similarity + image-text scores
+- `outputs/final/golden.json` — final filtered dataset with selected best translations
+- `outputs/splits/<lang>/{short,long}.json` — per-language split files for release
 
-Follow these steps sequentially to construct the SilkRoad-MMT dataset.
+---
 
-Phase 1: Visual Captioning
+## Reproducing paper thresholds
 
-Feature Extraction: Pre-compute image features to accelerate subsequent ranking.
+Paper thresholds are recorded in:
+- `configs/paper_thresholds.yaml`
 
-python scripts/00_extract_image_features.py --image_root /path/to/images
+The filtering scripts implement these thresholds directly; you can adjust them via CLI/env vars as described in the scripts.
 
+---
 
-Generation & Ranking: Generate candidate captions (Short/Long) using Qwen3-VL and select the best ones using SigLIP.
+## Notes on models
 
-python scripts/02_generate_and_rank.py
+By default, scripts use Hugging Face model IDs via `from_pretrained(...)`.
+You can override any model by setting environment variables, e.g.:
 
+```bash
+export SILKROAD_SIGLIP_MODEL="google/siglip-so400m-patch14-384"
+export SILKROAD_VL_CAPTION_MODEL="Qwen/Qwen3-VL-8B-Instruct"
+export SILKROAD_NLLB_MODEL="facebook/nllb-200-3.3B"
+export SILKROAD_SEAMLESS_MODEL="facebook/seamless-m4t-v2-large"
+export SILKROAD_MADLAD_MODEL="google/madlad400-7b-mt"
+export SILKROAD_QWEN_TRANSLATOR="Qwen/Qwen3-32B-Instruct"
+```
 
-Initial Filtering: Filter out low-quality captions based on SigLIP scores and length constraints.
+If you use **local checkpoints**, point the env var to your local directory under `models/`.
 
-python scripts/04_filter_dataset.py --input_file raw_captions.json --output_file filtered_captions.json
+---
 
+## Citation
 
-Phase 2: Ensemble Translation
+See `CITATION.cff`. If your venue requires BibTeX, add it to the paper appendix and keep this file consistent.
 
-Hybrid Translation: Translate the English captions into 6 target languages using the 4-model ensemble.
+---
 
-python scripts/06_translate_all_lang_4model.py --input_file filtered_captions.json --output_file dataset_translated.json
+## License
 
+This code is released under the **Apache-2.0 License** (see `LICENSE`).
 
-Phase 3: Tri-QE Filtering
+---
 
-Back-Translation: Translate the target language text back to English using NLLB-200.
+## Support for anonymous review
 
-python scripts/07_b_back_translate.py --input_file dataset_translated.json
+If you plan to host on **4open**:
+- Do **not** push `data/`, `models/`, `outputs/`, `logs/` to GitHub.
+- Make sure your git commits use a non-identifying author/email.
+- Add any remaining sensitive tokens to 4open's anonymization list.
 
-
-Quality Estimation (Tri-QE): Calculate COMET, BERTScore, and CLIP scores.
-Note: This script includes Monkey Patches for offline compatibility with comet and transformers.
-
-python scripts/08_quality_estimation.py --input_file dataset_with_bt.json
-
-
-Post-Processing: Clean up script errors (e.g., removing Cyrillic characters from Uzbek translations) and split the dataset.
-
-python scripts/09_filter_uzbek_cyrillic.py
-python scripts/11_split_languages.py
-
-
-⚠️ Important Notes
-
-Path Configuration: The scripts currently use hardcoded paths (e.g., /mnt/raid/...). You must update these paths in the "Configuration" section at the top of each script to match your local environment before running.
-
-Model Weights: Ensure you have downloaded the following models to your local directory:
-
-Qwen/Qwen2.5-VL-7B-Instruct (or Qwen3-VL)
-
-google/siglip-so400m-patch14-384
-
-facebook/nllb-200-3.3B
-
-facebook/seamless-m4t-v2-large
-
-google/madlad400-7b-mt
-
-Unbabel/wmt22-cometkiwi-da
-
-openai/clip-vit-large-patch14
-
-Hardware: We recommend using GPUs with at least 24GB VRAM for inference. For Qwen-VL generation, A100/H100 GPUs are preferred.
-
-📜 Citation
-
-If you use this code or dataset in your research, please cite our paper:
-
-@inproceedings{silkroad2025,
-  title={SilkRoad-MMT: Bridging the Low-Resource Gap in Multimodal Machine Translation},
-  author={Anonymous},
-  booktitle={ACL/EMNLP},
-  year={2025}
-}
-
-
-📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+See `docs/ANONYMIZATION.md`.
