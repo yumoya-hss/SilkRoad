@@ -1,0 +1,13 @@
+# Thresholds used in the paper (edit if you run new ablations)
+captions:
+  min_siglip_score: 0.90
+  short_word_range: [8, 20]
+  long_word_range: [25, 45]
+
+selection:
+  bert_score_min: 0.90
+  comet_min: 0.78
+  clip_score_min: 0.27
+  # Special-case rules (if used in your experiments)
+  uyghur_translator: "nllb"   # in code: restrict uyghur to NLLB
+  uzbek_script: "latin"       # filter Cyrillic Uzbek translations
