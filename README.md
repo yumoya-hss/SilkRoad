@@ -15,14 +15,12 @@ from images and automatically generated captions.
 ```
 pipelines/              # Main end-to-end dataset construction pipeline (stages 00–11)
 experiments/            # Ablations/analysis scripts used in the paper (optional)
-configs/                # Default configs & paper thresholds
 scripts/                # One-command runners
 data/
   images/               # Place images here (not tracked)
   metadata/             # Place metadata/label files here (not tracked)
 models/                 # Optional local model checkpoints (not tracked)
 outputs/                # All pipeline outputs (not tracked)
-logs/                   # Logs (not tracked)
 ```
 
 ---
