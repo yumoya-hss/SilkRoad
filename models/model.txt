@@ -1,0 +1,16 @@
+clip-vit-base-patch32
+clip-vit-large-patch14
+siglip-s0400m-patch14-384
+InternVL3-8B
+Ilava-1.5-7b-hf
+Ilava-v1.6-mistral-7b-hf
+Qwen2.5-VL-7B-Instruct 
+Qwen3-VL-8B-Instruct
+infoxlm-large
+Qwen3-32B
+madlad400-7b-mt
+nllb-200-3.3B
+seamless-m4t-v2-large
+wmt22-cometkiwi-da
+xlm-roberta-large
+SlkRoad-MMT-8B
