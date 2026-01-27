@@ -105,6 +105,12 @@ If you use **local checkpoints**, point the env var to your local directory unde
 
 ---
 
+## Final datasets
+Datasets are recorded in:
+- `datat/10_dataset_optimal_filtered_v3.zip`
+
+---
+
 ## Citation
 
 See `CITATION.cff`. If your venue requires BibTeX, add it to the paper appendix and keep this file consistent.
